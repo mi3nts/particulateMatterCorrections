@@ -1,0 +1,4 @@
+dateTime,barrometricPressureMercury,BPMUnits,barrometricPressureBars,BPBUnits,airTemperature,ATUnits,waterTemperature,WTUnits,relativeHumidity,absoluteHumidity,dewPoint,DPUnits,windDirectionTrue,WDTUnits,windDirectionMagnetic,WDMUnits,windSpeedKnots,WSKUnits,windSpeedMetersPerSecond,WSMPSUnits,checkSum
+2024-04-22 20:25:56.044192,30.1176,I,1.0199,B,22.4,C,,,29.3,,3.6,C,108.9,T,105.5,M,8.2,N,4.2,M,5F
+2024-04-22 20:26:02.044767,30.1176,I,1.0199,B,22.4,C,,,29.2,,3.5,C,115.9,T,112.5,M,3.1,N,1.6,M,5E
+2024-04-22 20:26:08.040566,30.1235,I,1.0201,B,22.4,C,,,29.3,,3.6,C,99.7,T,96.3,M,3.1,N,1.6,M,5A
