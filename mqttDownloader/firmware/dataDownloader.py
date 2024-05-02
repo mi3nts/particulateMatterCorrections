@@ -27,6 +27,8 @@ import pandas as pd
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.model_selection import train_test_split
 import joblib
+from datetime import timedelta
+
 from humidCorr_step1 import humid 
 
 climateSensor = 'BME280V2'
@@ -123,12 +125,57 @@ def on_message_DC(client, userdata, msg):
         print(climateDataDic)
 
         if sensorID == "IPS7100" and bool(climateDataDic):
-            dateTime = sensorDictionary['dateTime']
+            IPS7100_dateTime = sensorDictionary['dateTime']
             pc0_1, pc0_3, pc0_5, pc1_0, pc2_5, pc5_0, pc10_0 = sensorDictionary['pc0_1'], sensorDictionary['pc0_3'], sensorDictionary['pc0_5'], sensorDictionary['pc1_0'], sensorDictionary['pc2_5'], sensorDictionary['pc5_0'], sensorDictionary['pc10_0']
-            humidity, temperature, dewPoint, pressure = climateDataDic['humidity'], climateDataDic['temperature'], climateDataDic['dewPoint'], climateDataDic['pressure']
+            climate_datetime, humidity, temperature, dewPoint, pressure = climateDataDic['dateTime'], climateDataDic['humidity'], climateDataDic['temperature'], climateDataDic['dewPoint'], climateDataDic['pressure']
             foggy = float(temperature) - float(dewPoint)
             print(humidity, temperature, dewPoint, pressure, foggy)
 
+            timestamp_IPS = datetime.datetime.strptime(str(IPS7100_dateTime), "%Y-%m-%d %H:%M:%S.%f")
+            timestamp_clim = datetime.datetime.strptime(str(climate_datetime), "%Y-%m-%d %H:%M:%S.%f")
+            time_difference = abs(timestamp_IPS - timestamp_clim)
+            ten_minutes = timedelta(minutes=10)
+            print('..............................')
+            print(time_difference)
+            print(ten_minutes)
+            if time_difference < ten_minutes:
+                cor_pc0_1, cor_pc0_3, cor_pc0_5, cor_pc1_0, cor_pc2_5, cor_pc5_0, cor_pc10_0, humidity, temperature, dewPoint  = humid(pc0_1, pc0_3, pc0_5, pc1_0, pc2_5, pc5_0, pc10_0, humidity, temperature, dewPoint)
+            
+                m0_1 = 8.355696123812269e-07
+                m0_3 = 2.2560825222215327e-05
+                m0_5 = 0.00010446111749483851
+                m1_0 = 0.0008397941861044865
+                m2_5 = 0.013925696906339288
+                m5_0 = 0.12597702778750686
+                m10_0 = 1.0472
+                
+                cor_pm0_1 = m0_1*cor_pc0_1
+                cor_pm0_3 = cor_pm0_1 + m0_3*cor_pc0_3
+                cor_pm0_5 = cor_pm0_3 + m0_5*cor_pc0_5
+                cor_pm1_0 = cor_pm0_5 + m1_0*cor_pc1_0
+                cor_pm2_5 = cor_pm1_0 + m2_5*cor_pc2_5
+                cor_pm5_0 = cor_pm2_5 + m5_0*cor_pc5_0
+                cor_pm10_0 = cor_pm5_0 + m10_0*cor_pc10_0
+                print(cor_pm0_1, cor_pm0_3, cor_pm0_5, cor_pm1_0, cor_pm2_5, cor_pm5_0, cor_pm10_0)
+
+                ##### ML humidity correction #############################
+                #predictors = ['cor_pm2_5', 'temperature', 'pressure', 'humidity', 'dewPoint', 'altitude']
+                data = {'cor_pm2_5': [float(cor_pm2_5)], 'temperature': [float(temperature)], 'pressure': [pressure], 'humidity':[humidity], 'dewPoint':[dewPoint], 'temp_dew':[foggy]}
+                #data = {'cor_pm2_5': [float(cor_pm2_5)], 'temperature': [float(temperature)]}
+                df = pd.DataFrame(data)
+                print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+                #print(df)
+                predicted_train_valid2 = make_prediction2(loaded_humidModel, df)
+                ML_pm2_5 = predicted_train_valid2["Predictions"][0]
+
+
+                corr_data = {'ori_pm2_5': sensorDictionary['pm2_5'], 'HG_pm2_5': cor_pm2_5, 'HG_ML_pm2_5': ML_pm2_5}
+                print(corr_data)
+            else:
+                print("The time difference is greater than or equal to 10 minutes.")
+            #print(timestamp_clim)
+        
+            '''
             cor_pc0_1, cor_pc0_3, cor_pc0_5, cor_pc1_0, cor_pc2_5, cor_pc5_0, cor_pc10_0, humidity, temperature, dewPoint  = humid(pc0_1, pc0_3, pc0_5, pc1_0, pc2_5, pc5_0, pc10_0, humidity, temperature, dewPoint)
             
             m0_1 = 8.355696123812269e-07
@@ -154,13 +201,14 @@ def on_message_DC(client, userdata, msg):
             #data = {'cor_pm2_5': [float(cor_pm2_5)], 'temperature': [float(temperature)]}
             df = pd.DataFrame(data)
             print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-            print(df)
+            #print(df)
             predicted_train_valid2 = make_prediction2(loaded_humidModel, df)
             ML_pm2_5 = predicted_train_valid2["Predictions"][0]
 
 
             corr_data = {'ori_pm2_5': sensorDictionary['pm2_5'], 'HG_pm2_5': cor_pm2_5, 'HG_ML_pm2_5': ML_pm2_5}
             print(corr_data)
+            '''
 
         else:
             print('Note: Not IPS7100 or climateDataDic is empty')
